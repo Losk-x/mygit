@@ -11,55 +11,39 @@
 
 using namespace std;
 
-class crawl {
-	public:
-		crawl(const string &s) : seed(s) {};
-		crawl() = default;
-		void set_seed(const string &s)
-		{
-			seed = s;
-		}
-	private:
-		int url_cnt = 0;
-		string seed;
-		set<string> all_urls;
-		queue<string> url_frontier;
-		
-		void crawling();
-		void fetch(const string &url);
-		void parse(string &url);
-		bool nomalize(string &s,const string &root);
-		void findurl(const string &url,vector<string> &newurls);
-		string trans(const string &s);
-};
+void fetch(const string &url);
+void parse(string &url,set<string> &allurl,queue<string> &frontier);
+bool nomalize(string &s,const string &root);
+void findurl(const string &url,vector<string> &newurls);
+string trans(const string &s);
+
+ofstream test("testcrawling.out");
+
 int main(void)
 {
 	string seed = "info.ruc.edu.cn";
 	//cin >> seed; // by default = info.ruc.edu.cn
+	set<string> all_urls;
+	queue<string> url_frontier;
 	
-	crawl inforuc(seed);
-		
-	return 0;
-}
-
-void crawl::crawling()
-{
-	if (seed.empty()){
-		cerr << "no seed" << endl;
-		return;
-	}
+	url_frontier.push(seed);
+	all_urls.insert(seed);
+	int cnt = 0;
 	do{
-		url_cnt++;
+		cnt++;
 		string cur_url = url_frontier.front();
 		url_frontier.pop();
 		
 		fetch(cur_url);
-		parse(cur_url); //1.find 3.judge_rep 2.nomalize 4.push	
+		parse(cur_url,all_urls,url_frontier); //1.find 3.judge_rep 2.nomalize 4.push	
 		//sleep(1);
 	}while (!url_frontier.empty());
+	cout << cnt << endl;
+	
+	return 0;
 }
 
-void crawl::fetch(const string &url)
+void fetch(const string &url)
 {
 	string realurl = trans(url);
 	realurl = '"' + realurl + '"'; 
@@ -69,32 +53,32 @@ void crawl::fetch(const string &url)
 	return;
 }
 
-void crawl::parse(string &url)
+void parse(string &url,set<string> &allurl,queue<string> &frontier)
 {
 	vector<string> newurls;
 	
 	findurl(url,newurls);
 	auto end = newurls.end();
 	for (auto beg = newurls.begin() ; beg != end ; ++beg) {
-		if (!all_urls.count(*beg)) {
-			url_frontier.push(*beg);
-			all_urls.insert(*beg);
+		if (!allurl.count(*beg)) {
+			frontier.push(*beg);
+			allurl.insert(*beg);
 		}
 	}
 }
 
 
 // nomalize the relative path to be the absolute one if not our target return false
-bool crawl::nomalize(string &s,const string &root)
+bool nomalize(string &s,const string &root)
 {
 	const string home = "info.ruc.edu.cn";// restrict the url not go outside
 	const string abslt = "http" ;// if absolute path; ????????????? if dont have this?
 	size_t ifhome = string::npos , ifabs = string::npos;
-	const int http_len = 7; //"http://";
 	
 	ifabs = s.find(abslt);
 	if ( ifabs == string::npos ) {
 		if(s[0] == '#') {
+test << s;
 			 return false; // isnt a url but a anchor
 		}
 		size_t ifjavas = s.find("javascript");
@@ -114,7 +98,7 @@ bool crawl::nomalize(string &s,const string &root)
 		if (ifhome == string::npos)
 			return false;
 		else{
-			s.erase(0,http_len); //delete the "http://"
+			s.erase(0,7); //delete the "http://"
 		}		
 	}
 	
@@ -124,14 +108,13 @@ bool crawl::nomalize(string &s,const string &root)
 	return true;
 }
 
-void crawl::findurl(const string &url,vector<string> &newurls)
+void findurl(const string &url,vector<string> &newurls)
 {
 	const char *curl = url.c_str();
 	auto fileopen = freopen(curl,"r",stdin); // using fstream is better
 	
 	if (!fileopen) {	
-//test << "the url cannot open" << url << endl;
-		return;
+test << "the url cannot open" << url << endl;
 	}
 
 	do {
@@ -174,7 +157,7 @@ void crawl::findurl(const string &url,vector<string> &newurls)
 }
 
 // transfer the '*' (the filename) to a realurl  
-inline string crawl::trans(const string &s)
+string trans(const string &s)
 {
 	string str = s;
 	for ( auto &c : str)
